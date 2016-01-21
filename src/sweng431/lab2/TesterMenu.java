@@ -7,17 +7,26 @@ package sweng431.lab2;
 
 import gui.MyGUI;
 import java.awt.AWTEvent;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JRootPane;
@@ -31,26 +40,34 @@ import javax.swing.SwingUtilities;
 public class TesterMenu extends javax.swing.JFrame {
     
     private ArrayList<JComponent> testComponents = new ArrayList<>();
-    private Toolkit tk = Toolkit.getDefaultToolkit();   
+    private Toolkit tk = Toolkit.getDefaultToolkit();
+    private ArrayList<Integer> vals1, vals2, expectedSums;
     /**
      * Creates new form TesterMenu
      */
     public TesterMenu() {
+        this.vals1 = new ArrayList<>();
+        this.vals2 = new ArrayList<>();
+        this.expectedSums = new ArrayList<>();
         initComponents();
         initCheckBoxes();
         runTarget();
     }
     
+    /* Runs the GUI that will be tested */
     private void runTarget() {
-        MyGUI mgui = new MyGUI();
-        mgui.setSize(500,400);
-        mgui.setVisible(true);
-        
-        
-//        MyAWTEventListener ml = new MyAWTEventListener();
-//        tk.addAWTEventListener(ml, AWTEvent.MOUSE_EVENT_MASK);
+        Thread GUIthread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MyGUI mgui = new MyGUI();
+                mgui.setSize(500,400);
+                mgui.setVisible(true);
+            }
+        });
+        GUIthread.start();
     }
     
+    /* Special setup for the checkboxes */
     private void initCheckBoxes() {
         ActionListener al = new ActionListener() {
 
@@ -70,6 +87,7 @@ public class TesterMenu extends javax.swing.JFrame {
         linkedSumCB.addActionListener(al);
     }
     
+    /* Starts the linking process and adds the listeners required */
     private void startLink(JButton buttonClicked, String id, JCheckBox check) {
         JFrame thisFrame = this;
         thisFrame.setEnabled(false);
@@ -103,15 +121,68 @@ public class TesterMenu extends javax.swing.JFrame {
         };
         tk.addAWTEventListener(ml, AWTEvent.MOUSE_EVENT_MASK);
     }
-
+    
+    /* Links the component and adds it to the test components Array List*/
     private void link(JComponent linkComp, String id) {
         linkComp.setName(id);
         testComponents.remove(linkComp);
         testComponents.add(linkComp);
     }
     
+    /* Returns if all steps necessary for testing are completed */
     private boolean allStepsCompleted() {
         return linkedOkCB.isSelected() && linkedSumCB.isSelected() && linkedVal1CB.isSelected() && linkedVal2CB.isSelected();
+    }
+    
+    private int doTest(int num1, int num2) throws InterruptedException {
+        JButton calcButton = null;
+        JTextField val1 = null, val2 = null, sum = null;
+        for (JComponent comp : testComponents) {
+            switch (comp.getName()) {
+                case "val1":
+                    val1 = (JTextField) comp;
+                    break;
+                case "val2":
+                    val2 = (JTextField) comp;
+                    break;
+                case "sum":
+                    sum = (JTextField) comp;
+                    break;
+                case "ok":
+                    calcButton = (JButton) comp;
+                    break;
+            }
+        }
+        JFrame fram = (JFrame) SwingUtilities.windowForComponent(val1);
+        val1.setText(String.valueOf(num1));
+        fram.paintComponents(fram.getGraphics());
+        Thread.sleep((long) timeDelaySlider.getValue());
+        val2.setText(String.valueOf(num2));
+        fram.paintComponents(fram.getGraphics());
+        Thread.sleep((long) timeDelaySlider.getValue());
+        calcButton.doClick();
+        fram.paintComponents(fram.getGraphics());
+        int expected = num1 + num2;
+        int output = Integer.parseInt(sum.getText());
+        Color defColor = sum.getBackground();
+        if (output != expected) {
+            System.out.print("Test Failed:   ");
+            int dif = output - expected;
+            System.out.println(num1+"\t + \t"+num2+"\t = \t"+output+"\t // Dif = "+dif);
+            sum.setBackground(Color.RED);
+        } else {
+            System.out.print("Test Passed:   ");
+            int dif = output - expected;
+            System.out.println(num1+"\t + \t"+num2+"\t = \t"+output+"\t // Dif = "+dif);
+            sum.setBackground(Color.GREEN);
+        }
+        fram.paintComponents(fram.getGraphics());
+        Thread.sleep((long) timeDelaySlider.getValue());
+        sum.setBackground(defColor);
+        val1.setText("");
+        val2.setText("");
+        sum.setText("");
+        return expected - output;
     }
     
     /**
@@ -137,6 +208,12 @@ public class TesterMenu extends javax.swing.JFrame {
         linkedOkCB = new javax.swing.JCheckBox();
         timeDelaySlider = new javax.swing.JSlider();
         timeDelayLabel = new javax.swing.JLabel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
 
         jCheckBox1.setText("jCheckBox1");
 
@@ -195,7 +272,7 @@ public class TesterMenu extends javax.swing.JFrame {
 
         linkedOkCB.setText("Linked");
 
-        timeDelaySlider.setMaximum(500);
+        timeDelaySlider.setMaximum(1000);
         timeDelaySlider.setValue(10);
         timeDelaySlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -215,39 +292,75 @@ public class TesterMenu extends javax.swing.JFrame {
 
         timeDelayLabel.setText("100ms");
 
+        jLabel1.setText("Usage:");
+
+        jLabel2.setText("1. Click on one of the buttons");
+
+        jLabel3.setText("2. Click on the corresponding component");
+
+        jLabel4.setText("3. Repeat for all other buttons");
+
+        jLabel5.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel5.setText("Testing Tool 1.0");
+
+        jLabel6.setText("Delay");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(startTestingButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(timeDelaySlider, javax.swing.GroupLayout.DEFAULT_SIZE, 216, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(timeDelayLabel))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
+                        .addGap(10, 10, 10)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(valField1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(sumField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(okButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 184, Short.MAX_VALUE)
-                            .addComponent(valField2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(selectFile, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel4)
+                                    .addComponent(jLabel3)
+                                    .addComponent(jLabel2))
+                                .addGap(0, 43, Short.MAX_VALUE))
+                            .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(startTestingButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(valField1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(sumField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(okButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(valField2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(selectFile, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(linkedVal1CB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(linkedVal2CB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(linkedSumCB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(linkedOkCB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(selectedCB, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 77, Short.MAX_VALUE)))
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jLabel6)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(selectedCB, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(linkedVal1CB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(linkedVal2CB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(linkedSumCB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(linkedOkCB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(4, 4, 4)))
+                        .addComponent(timeDelaySlider, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(timeDelayLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
+                .addComponent(jLabel5)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 26, Short.MAX_VALUE)
+                .addComponent(jLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel2)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel3)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel4)
+                .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(valField1)
                     .addComponent(linkedVal1CB))
@@ -267,15 +380,12 @@ public class TesterMenu extends javax.swing.JFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(selectFile)
                     .addComponent(selectedCB))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(timeDelaySlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(timeDelayLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)))
+                    .addComponent(timeDelayLabel)
+                    .addComponent(timeDelaySlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel6))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(startTestingButton)
                 .addContainerGap())
         );
@@ -301,44 +411,13 @@ public class TesterMenu extends javax.swing.JFrame {
 
     private void startTestingButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startTestingButtonActionPerformed
         if (allStepsCompleted()) {
-            JButton calcButton = null;
-            JTextField val1 = null, val2 = null, sum = null;
-            for (JComponent comp : testComponents) {
-                switch (comp.getName()) {
-                    case "val1":
-                        val1 = (JTextField) comp;
-                        break;
-                    case "val2":
-                        val2 = (JTextField) comp;
-                        break;
-                    case "sum":
-                        sum = (JTextField) comp;
-                        break;
-                    case "ok":
-                        calcButton = (JButton) comp;
-                        break;
+            for (int i = 0; i < this.expectedSums.size(); i++) {
+                try {
+                    doTest(this.vals1.get(i), this.vals2.get(i));
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(TesterMenu.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            
-            for (int i = 0; i < 20; i++) {
-                for (int j = 0; j < 20; j++) {
-                    val1.setText(String.valueOf(i));
-                    val2.setText(String.valueOf(j));
-                    calcButton.doClick();
-                    int sumI = i + j;
-                    int checksum = Integer.parseInt(sum.getText());
-                    if (checksum != sumI) {
-                        System.out.print("Test Failed:   ");
-                        int dif = checksum - sumI;
-                        System.out.println(i+"\t + \t"+j+"\t = \t"+checksum+"\t // Dif = "+dif);
-                    } else {
-                        System.out.print("Test Passed:   ");
-                        int dif = checksum - sumI;
-                        System.out.println(i+"\t + \t"+j+"\t = \t"+checksum+"\t // Dif = "+dif);
-                    }
-                }
-            }
-            
         } else {
             JOptionPane.showMessageDialog(null, "Please complete "
                     + "all steps first.", "Incomplete.",
@@ -347,7 +426,29 @@ public class TesterMenu extends javax.swing.JFrame {
     }//GEN-LAST:event_startTestingButtonActionPerformed
 
     private void selectFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectFileActionPerformed
-        // TODO add your handling code here:
+        JFileChooser fc = new JFileChooser();
+        int status = fc.showOpenDialog(this);
+        if (status == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fc.getSelectedFile();
+            FileReader fr = null;
+            Scanner scnr = null;
+            try {
+                scnr = new Scanner(selectedFile);
+            } catch (FileNotFoundException ex) {
+                Logger.getLogger(TesterMenu.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            // Clear old input
+            this.vals1.clear(); this.vals2.clear(); this.expectedSums.clear();
+            // Read new input
+            while(scnr.hasNextInt()) {
+                this.vals1.add(scnr.nextInt());
+                this.vals2.add(scnr.nextInt());
+                this.expectedSums.add(scnr.nextInt());
+            }
+            selectedCB.setSelected(true);
+        } else {
+            // no file selected
+        }
     }//GEN-LAST:event_selectFileActionPerformed
 
     private void timeDelaySliderPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_timeDelaySliderPropertyChange
@@ -399,6 +500,12 @@ public class TesterMenu extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox jCheckBox1;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
     private javax.swing.JCheckBox linkedOkCB;
     private javax.swing.JCheckBox linkedSumCB;
     private javax.swing.JCheckBox linkedVal1CB;
