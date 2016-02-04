@@ -28,5 +28,30 @@ public class SWENG431LAB2 {
         TesterMenu tm = new TesterMenu();
         tm.setVisible(true);
     }
+//    public static void main (String[] args) throws java.lang.Exception
+//	{
+//		int [] t1 = {1,2,3,4,5,6,7};
+//		int [] t2 = {6,7,1,2,3,4,5};
+//		int [] t3 = {3,4,5,6,7,1,2};
+//                int [] tt4 = {1};
+//		System.out.println(t1[getP(t1)]);
+//		System.out.println(t2[getP(t2)]);
+//		System.out.println(t3[getP(t3)]);
+//                System.out.println(tt4[getP(tt4)]);
+//		
+//	}
+//	
+//	static int getP(int [] A) {
+//		int left = 0, right = A.length-1;
+//		while (true) {
+//			int mid = left + (right - left)/2;
+//			if (right == left) return mid;
+//			if (A[mid] > A[right]) {
+//				left = mid;
+//			} else {
+//				right = mid;
+//			}
+//		}
+//	}
     
 }
